@@ -4,6 +4,7 @@ import { getLanguageCookie, setLanguageCookie } from "@/lib/cookies";
 import { shouldUILocalesOverrideCookie } from "@/lib/i18n";
 import { idpTypeToSlug } from "@/lib/idp";
 import { createLogger } from "@/lib/logger";
+import { buildLoginErrorRedirect, isRegistrationDisabled } from "@/lib/login-config";
 import { sendLoginname, SendLoginnameCommand } from "@/lib/server/loginname";
 import { constructUrl } from "@/lib/service-url";
 import { findValidSession } from "@/lib/session";
@@ -212,6 +213,10 @@ export async function handleOIDCFlowInitiation(params: FlowInitiationParams): Pr
   }
 
   if (authRequest && authRequest.prompt.includes(Prompt.CREATE)) {
+    if (isRegistrationDisabled()) {
+      return NextResponse.redirect(constructUrl(request, buildLoginErrorRedirect({ organization, requestId })));
+    }
+
     const registerUrl = constructUrl(request, "/register");
     registerUrl.searchParams.set("requestId", requestId);
 

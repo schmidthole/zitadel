@@ -12,6 +12,7 @@ import { idpTypeToIdentityProviderType, idpTypeToSlug } from "../idp";
 import { PasskeysType } from "@zitadel/proto/zitadel/settings/v2/login_settings_pb";
 import { IDPLink } from "@zitadel/proto/zitadel/user/v2/idp_pb";
 import { UserState } from "@zitadel/proto/zitadel/user/v2/user_pb";
+import { isRegistrationDisabled } from "../login-config";
 import { getServiceConfig } from "../service-url";
 import {
   getActiveIdentityProviders,
@@ -118,7 +119,7 @@ export async function sendLoginname(command: SendLoginnameCommand) {
     }
 
     // If no IDP links exist for the user (or no userId provided), try to get active IDPs from the organization
-    if (identityProviders.length === 0) {
+    if (identityProviders.length === 0 && (userId || !isRegistrationDisabled())) {
       const activeIdps = await getActiveIdentityProviders({ serviceConfig, orgId: organization }).then((resp) => {
         return resp.identityProviders.filter((idp) => idp.options?.isAutoCreation || idp.options?.isCreationAllowed);
       });
@@ -536,6 +537,10 @@ export async function sendLoginname(command: SendLoginnameCommand) {
 
   // user not found, check if IDPs are available when local auth is not allowed
   if (!effectiveLoginSettings?.allowLocalAuthentication) {
+    if (isRegistrationDisabled()) {
+      return preventUserEnumeration(discoveredOrganization);
+    }
+
     logger.debug("redirecting to IDP (register allowed, password not allowed)");
     const resp = await redirectUserToIDP(undefined, discoveredOrganization);
     if (resp) {
@@ -544,7 +549,11 @@ export async function sendLoginname(command: SendLoginnameCommand) {
     logger.debug("IDP redirect failed, returning user not found");
 
     return preventUserEnumeration(discoveredOrganization);
-  } else if (effectiveLoginSettings?.allowRegister && effectiveLoginSettings?.allowLocalAuthentication) {
+  } else if (
+    !isRegistrationDisabled() &&
+    effectiveLoginSettings?.allowRegister &&
+    effectiveLoginSettings?.allowLocalAuthentication
+  ) {
     logger.debug("register and password both allowed");
     // do not register user if ignoreUnknownUsernames is set
     if (discoveredOrganization && !effectiveLoginSettings?.ignoreUnknownUsernames) {

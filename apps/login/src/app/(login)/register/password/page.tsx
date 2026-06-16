@@ -1,6 +1,7 @@
 import { DynamicTheme } from "@/components/dynamic-theme";
 import { SetRegisterPasswordForm } from "@/components/set-register-password-form";
 import { Translated } from "@/components/translated";
+import { buildLoginErrorRedirect, isRegistrationDisabled } from "@/lib/login-config";
 import { getServiceConfig } from "@/lib/service-url";
 import {
   getBrandingSettings,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/zitadel";
 import { Organization } from "@zitadel/proto/zitadel/org/v2/org_pb";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export default async function Page(props: { searchParams: Promise<Record<string | number | symbol, string | undefined>> }) {
   const searchParams = await props.searchParams;
@@ -25,6 +27,10 @@ export default async function Page(props: { searchParams: Promise<Record<string 
     if (org) {
       organization = org.id;
     }
+  }
+
+  if (isRegistrationDisabled()) {
+    redirect(buildLoginErrorRedirect({ organization, requestId }));
   }
 
   const missingData = !firstname || !lastname || !email || !organization;

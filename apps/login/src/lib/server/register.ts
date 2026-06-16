@@ -11,6 +11,7 @@ import { cookies, headers } from "next/headers";
 import { completeFlowOrGetUrl } from "../client";
 import { getOrSetFingerprintId } from "../fingerprint";
 import { createLogger } from "../logger";
+import { buildLoginErrorRedirect, isRegistrationDisabled } from "../login-config";
 import { getServiceConfig } from "../service-url";
 import { checkEmailVerification, checkMFAFactors } from "../verify-helper";
 
@@ -65,6 +66,10 @@ export async function registerUser(
   const t = await getTranslations("register");
   const _headers = await headers();
   const { serviceConfig } = getServiceConfig(_headers);
+
+  if (isRegistrationDisabled()) {
+    return { redirect: buildLoginErrorRedirect({ organization: command.organization, requestId: command.requestId }) };
+  }
 
   const loginSettings = await getLoginSettings({ serviceConfig, organization: command.organization });
 
@@ -206,6 +211,10 @@ export async function registerUserAndLinkToIDP(
 
   const _headers = await headers();
   const { serviceConfig } = getServiceConfig(_headers);
+
+  if (isRegistrationDisabled()) {
+    return { redirect: buildLoginErrorRedirect({ organization: command.organization, requestId: command.requestId }) };
+  }
 
   const loginSettings = await getLoginSettings({ serviceConfig, organization: command.organization });
 
