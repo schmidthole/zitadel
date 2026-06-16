@@ -23,4 +23,18 @@ describe("UsernameForm", () => {
     );
     expect(getByTestId("username-text-input")).toHaveFocus();
   });
+
+  test("should render register button when registration is allowed", () => {
+    const { getByTestId } = render(
+      <UsernameForm loginName="" requestId={undefined} loginSettings={undefined} submit={false} allowRegister={true} />,
+    );
+    expect(getByTestId("register-button")).toBeInTheDocument();
+  });
+
+  test("should hide register button when registration is not allowed", () => {
+    const { queryByTestId } = render(
+      <UsernameForm loginName="" requestId={undefined} loginSettings={undefined} submit={false} allowRegister={false} />,
+    );
+    expect(queryByTestId("register-button")).not.toBeInTheDocument();
+  });
 });

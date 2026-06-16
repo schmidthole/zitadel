@@ -2,6 +2,7 @@ import { DynamicTheme } from "@/components/dynamic-theme";
 import { SignInWithIdp } from "@/components/sign-in-with-idp";
 import { Translated } from "@/components/translated";
 import { UsernameForm } from "@/components/username-form";
+import { getLoginTitleOverride, isRegistrationAllowed } from "@/lib/login-config";
 import { getServiceConfig } from "@/lib/service-url";
 import { getActiveIdentityProviders, getBrandingSettings, getDefaultOrg, getLoginSettings } from "@/lib/zitadel";
 import { Organization } from "@zitadel/proto/zitadel/org/v2/org_pb";
@@ -44,13 +45,12 @@ export default async function Page(props: { searchParams: Promise<Record<string 
   });
 
   const branding = await getBrandingSettings({ serviceConfig, organization: organization ?? defaultOrganization });
+  const loginTitleOverride = getLoginTitleOverride();
 
   return (
     <DynamicTheme branding={branding}>
       <div className="flex flex-col space-y-4">
-        <h1>
-          <Translated i18nKey="title" namespace="loginname" />
-        </h1>
+        <h1>{loginTitleOverride ?? <Translated i18nKey="title" namespace="loginname" />}</h1>
         <p className="ztdl-p">
           <Translated i18nKey="description" namespace="loginname" />
         </p>
@@ -66,7 +66,7 @@ export default async function Page(props: { searchParams: Promise<Record<string 
             loginSettings={loginSettings}
             suffix={suffix}
             submit={submit}
-            allowRegister={!!loginSettings?.allowRegister}
+            allowRegister={isRegistrationAllowed(loginSettings)}
           ></UsernameForm>
         )}
 
