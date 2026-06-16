@@ -3,6 +3,7 @@
 import { getSessionCookieById } from "@/lib/cookies";
 import { isClassifiedError } from "@/lib/grpc/interceptors/error-classification";
 import { createLogger } from "@/lib/logger";
+import { buildLoginErrorRedirect, isRegistrationDisabled } from "@/lib/login-config";
 import { getServiceConfig } from "@/lib/service-url";
 import {
   addIDPLink,
@@ -630,6 +631,16 @@ async function handleAutoCreation(ctx: IDPHandlerContext): Promise<IDPHandlerRes
   const { organization, provider } = ctx.params;
 
   if (options?.isAutoCreation && createUserData) {
+    if (isRegistrationDisabled()) {
+      return {
+        redirect: buildLoginErrorRedirect({
+          organization,
+          requestId: ctx.params.requestId,
+          postErrorRedirectUrl: ctx.params.postErrorRedirectUrl,
+        }),
+      };
+    }
+
     const orgToRegisterOn = await resolveOrganizationForUser({
       organization,
       createUserData,
@@ -731,6 +742,16 @@ async function handleManualCreation(ctx: IDPHandlerContext): Promise<IDPHandlerR
   const { organization, provider } = ctx.params;
 
   if (options?.isCreationAllowed && createUserData) {
+    if (isRegistrationDisabled()) {
+      return {
+        redirect: buildLoginErrorRedirect({
+          organization,
+          requestId: ctx.params.requestId,
+          postErrorRedirectUrl: ctx.params.postErrorRedirectUrl,
+        }),
+      };
+    }
+
     const orgToRegisterOn = await resolveOrganizationForUser({
       organization,
       createUserData,

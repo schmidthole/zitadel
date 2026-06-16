@@ -53,6 +53,8 @@ vi.mock("next-intl/server", () => ({
 }));
 
 describe("sendLoginname", () => {
+  const originalEnv = process.env;
+
   // Mock modules
   let mockHeaders: any;
   let mockCreate: any;
@@ -71,6 +73,8 @@ describe("sendLoginname", () => {
   let mockGetOrgsByDomain: any;
 
   beforeEach(async () => {
+    process.env = { ...originalEnv };
+    delete process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION;
     vi.clearAllMocks();
 
     // Import mocked modules
@@ -125,6 +129,7 @@ describe("sendLoginname", () => {
   });
 
   afterEach(() => {
+    process.env = originalEnv;
     vi.restoreAllMocks();
   });
 
@@ -614,6 +619,23 @@ describe("sendLoginname", () => {
       expect(result?.redirect).toContain("email=user%40example.com");
     });
 
+    test("should not redirect to register when app registration is disabled", async () => {
+      process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION = "true";
+      mockGetLoginSettings.mockResolvedValue({
+        allowRegister: true,
+        allowLocalAuthentication: true,
+        ignoreUnknownUsernames: false,
+      });
+
+      const result = await sendLoginname({
+        loginName: "user@example.com",
+        organization: "org123",
+        requestId: "req123",
+      });
+
+      expect(result).toEqual({ error: "errors.userNotFound" });
+    });
+
     test("should redirect to password when ignoreUnknownUsernames is true", async () => {
       mockGetLoginSettings.mockResolvedValue({
         ignoreUnknownUsernames: true,
@@ -736,6 +758,25 @@ describe("sendLoginname", () => {
       });
 
       expect(result).toEqual({ redirect: "https://idp.example.com/auth" });
+    });
+
+    test("should allow external IDP authentication when app registration is disabled", async () => {
+      process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION = "true";
+      mockGetLoginSettings.mockResolvedValue({
+        allowRegister: true,
+        allowLocalAuthentication: false,
+      });
+      mockGetActiveIdentityProviders.mockResolvedValue({
+        identityProviders: [{ id: "idp123", type: "OIDC", options: { isAutoCreation: true } }],
+      });
+      mockStartIdentityProviderFlow.mockResolvedValue({ url: "https://idp.example.com/auth" });
+
+      const result = await sendLoginname({
+        loginName: "user@example.com",
+      });
+
+      expect(result).toEqual({ redirect: "https://idp.example.com/auth" });
+      expect(mockStartIdentityProviderFlow).toHaveBeenCalled();
     });
 
     test("should not redirect to IDP when single active IDP does not allow creation", async () => {

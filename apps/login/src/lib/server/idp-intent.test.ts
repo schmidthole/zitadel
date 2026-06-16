@@ -70,6 +70,8 @@ vi.mock("../fingerprint", () => ({
 }));
 
 describe("processIDPCallback", () => {
+  const originalEnv = process.env;
+
   // Mock modules
   let mockHeaders: any;
   let mockGetServiceUrlFromHeaders: any;
@@ -152,6 +154,8 @@ describe("processIDPCallback", () => {
   };
 
   beforeEach(async () => {
+    process.env = { ...originalEnv };
+    delete process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION;
     vi.resetAllMocks();
 
     // Import mocked modules
@@ -231,6 +235,7 @@ describe("processIDPCallback", () => {
   });
 
   afterEach(() => {
+    process.env = originalEnv;
     vi.restoreAllMocks();
   });
 
@@ -980,6 +985,15 @@ describe("processIDPCallback", () => {
       expect(result.redirect).toBe("https://app.example.com/success");
     });
 
+    test("should not auto-create user when app registration is disabled", async () => {
+      process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION = "true";
+
+      const result = await processIDPCallback(defaultParams);
+
+      expect(mockCreateUser).not.toHaveBeenCalled();
+      expect(result.redirect).toBe("/login-error?organization=org123&requestId=req123");
+    });
+
     test("should resolve organization from username domain", async () => {
       mockRetrieveIDPIntent.mockResolvedValue({
         ...defaultIntent,
@@ -1215,6 +1229,15 @@ describe("processIDPCallback", () => {
       expect(result.redirect).toContain("givenName=Test");
       expect(result.redirect).toContain("familyName=User");
       expect(result.redirect).toContain("email=test%40example.com");
+    });
+
+    test("should not redirect to complete registration when app registration is disabled", async () => {
+      process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION = "true";
+
+      const result = await processIDPCallback(defaultParams);
+
+      expect(result.redirect).toBe("/login-error?organization=org123&requestId=req123");
+      expect(result.redirect).not.toContain("complete-registration");
     });
 
     test("should fallback to default organization for registration", async () => {
