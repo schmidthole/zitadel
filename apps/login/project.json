@@ -22,6 +22,24 @@
       "inputs": [
         "default",
         "{workspaceRoot}/pnpm-lock.yaml",
+        {
+          "env": "NEXT_PUBLIC_BASE_PATH"
+        },
+        {
+          "env": "NEXT_PUBLIC_APPLICATION_NAME"
+        },
+        {
+          "env": "NEXT_PUBLIC_THEME_ROUNDNESS"
+        },
+        {
+          "env": "NEXT_PUBLIC_THEME_LAYOUT"
+        },
+        {
+          "env": "NEXT_PUBLIC_THEME_APPEARANCE"
+        },
+        {
+          "env": "NEXT_PUBLIC_THEME_SPACING"
+        },
         "!{projectRoot}/.env.*",
         "!{projectRoot}/.local.env",
         "!{projectRoot}/acceptance/**/*",
