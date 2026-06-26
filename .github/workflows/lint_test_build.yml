@@ -9,8 +9,6 @@ on:
     secrets:
       CODECOV_TOKEN:
         required: true
-      NX_CLOUD_ACCESS_TOKEN_READONLY:
-        required: true
 
 jobs:
   lint_test_build:
@@ -57,17 +55,11 @@ jobs:
         uses: nrwl/nx-set-shas@v4
       - name: Lint, Test and Build
         env:
-          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN || secrets.NX_CLOUD_ACCESS_TOKEN_READONLY }}
           NX_DAEMON: "false"
           NX_DISABLE_DB: "true"
         run: pnpm nx affected --nxBail --targets lint test build --exclude @zitadel/docs
       - name: Check for uncommitted changes (Codegen mismatch)
         run: git diff --exit-code
-      - name: Suggest Pipeline Fix By Nx Cloud AI
-        if: failure() || cancelled()
-        env:
-          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN || secrets.NX_CLOUD_ACCESS_TOKEN_READONLY }}
-        run: pnpm nx fix-ci
       - name: Publish API Unit Test Coverage
         uses: codecov/codecov-action@v4.3.0
         with:
