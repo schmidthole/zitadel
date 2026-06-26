@@ -1,6 +1,5 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "nxCloudId": "688a9021d48dce0efe0f119f",
   "workspaceLayout": {
     "libsDir": "packages"
   },
