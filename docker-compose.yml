@@ -1,0 +1,95 @@
+name: zitadel-login-dev
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: zitadel
+      POSTGRES_PASSWORD: zitadel
+      POSTGRES_DB: zitadel
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zitadel -d zitadel"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+  zitadel:
+    image: zitadel/zitadel:local
+    user: "0"
+    command:
+      - start-from-init
+      - --masterkey
+      - MasterkeyNeedsToHave32Characters
+      - --tlsMode
+      - disabled
+    environment:
+      ZITADEL_PORT: "8080"
+      ZITADEL_EXTERNALDOMAIN: localhost
+      ZITADEL_EXTERNALPORT: "9000"
+      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_TLS_ENABLED: "false"
+      ZITADEL_DATABASE_POSTGRES_DSN: postgresql://zitadel:zitadel@postgres:5432/zitadel?sslmode=disable
+
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: zitadel-admin
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: Password1!
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+      ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /zitadel/bootstrap/login-client.pat
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Local Login Client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
+
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "true"
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://localhost:9001/ui/v2/login/
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: http://localhost:9001/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://localhost:9001/ui/v2/login/logout?post_logout_redirect=
+      ZITADEL_SAML_DEFAULTLOGINURLV2: http://localhost:9001/ui/v2/login/login?samlRequest=
+    ports:
+      - "9000:8080"
+    healthcheck:
+      test: ["CMD", "/app/zitadel", "ready"]
+      interval: 10s
+      timeout: 30s
+      retries: 20
+      start_period: 20s
+    volumes:
+      - zitadel-bootstrap:/zitadel/bootstrap
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  zitadel-login:
+    image: zitadel/zitadel-login:local
+    user: "0"
+    environment:
+      ZITADEL_API_URL: http://zitadel:8080
+      ZITADEL_API_AWAITINITIALCONN: 120s
+      ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel/bootstrap/login-client.pat
+      CUSTOM_REQUEST_HEADERS: Host:localhost:9000,X-Forwarded-Proto:http
+
+      # Server-side Login UI options. Override these on the make command line,
+      # for example: make dev-up ZITADEL_LOGIN_DISABLE_REGISTRATION=false.
+      # NEXT_PUBLIC_* UI options are build-time values; set them in Makefile
+      # or pass them to make dev-up so the Login image is rebuilt with them.
+      ZITADEL_LOGIN_DISABLE_REGISTRATION: "${ZITADEL_LOGIN_DISABLE_REGISTRATION:-true}"
+      ZITADEL_LOGIN_TITLE: "${ZITADEL_LOGIN_TITLE:-Login to SwiftConnect}"
+    ports:
+      - "9001:3000"
+    healthcheck:
+      test: ["CMD", "node", "/app/healthcheck.mjs", "/ui/v2/login/ready"]
+      interval: 10s
+      timeout: 30s
+      retries: 20
+      start_period: 20s
+    volumes:
+      - zitadel-bootstrap:/zitadel/bootstrap:ro
+    depends_on:
+      zitadel:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  zitadel-bootstrap:
