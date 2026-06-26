@@ -9,9 +9,9 @@ export const demos: { name: string; items: Item[] }[] = [
     name: "Login",
     items: [
       {
-        name: "Loginname",
+        name: "Username",
         slug: "loginname",
-        description: "Start the loginflow with loginname",
+        description: "Start the login flow with a username",
       },
       {
         name: "Accounts",
