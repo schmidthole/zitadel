@@ -12,7 +12,7 @@ import { headers } from "next/headers";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("loginname");
-  return { title: t("title") };
+  return { title: getLoginTitleOverride() ?? t("title") };
 }
 
 export default async function Page(props: { searchParams: Promise<Record<string | number | symbol, string | undefined>> }) {
