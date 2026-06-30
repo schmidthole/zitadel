@@ -31,9 +31,15 @@ describe("isSafeRedirectUri", () => {
     expect(await isSafeRedirectUri("https://settings.com/dashboard")).toBe(true);
   });
 
-  test("should reject non-http(s) protocols", async () => {
+  test("should allow custom mobile deep link protocols", async () => {
+    expect(await isSafeRedirectUri("io.swiftconnect.mobile.dev.zitadel:/oauth/callback")).toBe(true);
+    expect(await isSafeRedirectUri("ch.zitadel.app://callback")).toBe(true);
+  });
+
+  test("should reject executable and browser-local protocols", async () => {
     expect(await isSafeRedirectUri("javascript:alert(1)")).toBe(false);
     expect(await isSafeRedirectUri("data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==")).toBe(false);
+    expect(await isSafeRedirectUri("vbscript:msgbox(1)")).toBe(false);
     expect(await isSafeRedirectUri("file:///etc/passwd")).toBe(false);
   });
 
