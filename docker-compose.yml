@@ -67,6 +67,7 @@ services:
     environment:
       ZITADEL_API_URL: http://zitadel:8080
       ZITADEL_API_AWAITINITIALCONN: 120s
+      ZITADEL_SESSION_COOKIE_SECRET: "${ZITADEL_SESSION_COOKIE_SECRET:-}"
       ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel/bootstrap/login-client.pat
       CUSTOM_REQUEST_HEADERS: Host:localhost:9000,X-Forwarded-Proto:http
 

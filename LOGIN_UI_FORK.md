@@ -67,6 +67,7 @@ services:
     environment:
       ZITADEL_API_URL: http://zitadel:8080
       ZITADEL_API_AWAITINITIALCONN: 120s
+      ZITADEL_SESSION_COOKIE_SECRET: "${ZITADEL_SESSION_COOKIE_SECRET:?Set a shared random secret of at least 32 characters}"
       ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel/bootstrap/login-client.pat
       CUSTOM_REQUEST_HEADERS: Host:localhost:9000,X-Forwarded-Proto:http
       ZITADEL_LOGIN_DISABLE_REGISTRATION: "true"
@@ -91,9 +92,10 @@ Adjust hostnames, ports, and schemes for the target environment. Public deployme
 
 This fork includes a root `Makefile` and Compose stack for local testing.
 
-Start the local stack:
+Set a session-signing secret, then start the local stack. Keep the same secret across restarts (and all replicas); store it in your deployment secret manager for persistent environments.
 
 ```bash
+export ZITADEL_SESSION_COOKIE_SECRET="$(openssl rand -base64 32)"
 make dev-up
 ```
 
@@ -141,6 +143,21 @@ docker image inspect ghcr.io/schmidthole/zitadel-login:login-app-fork
 ```
 
 ## Upgrade And Rebase Notes
+
+This fork is based on stable ZITADEL **v4.20.0** (`8afa5dd37`). Only the fork-specific commits were replayed from the previous upstream `main` base; this is not a migration of a server database created by an unreleased main-branch build.
+
+Compatibility decisions for this update:
+
+- `ZITADEL_LOGIN_DISABLE_REGISTRATION=true` blocks local registration and both automatic and manual IdP account creation. Existing users may still authenticate through external IdPs and link existing accounts, subject to upstream linking and verification policies.
+- Mobile callbacks use upstream's redirect handling and URL sanitization. Regression coverage includes the SwiftConnect callback scheme and the `/ui/v2/login` base path.
+- Set `ZITADEL_SESSION_COOKIE_SECRET` to a random value of at least 32 characters, shared by all Login UI replicas. The local Compose stack forwards this variable; if omitted, v4.20.0 still falls back to the API credential with a deprecation warning. A configured secret shorter than 32 characters makes readiness fail.
+- Existing unsigned Login UI cookies are discarded on upgrade, requiring sign-in again. Application sessions and tokens are unaffected. In-progress verification, linking, and device-code flows may need to restart.
+- The Login UI now checks API credentials at startup and exits if they are missing, invalid, or rejected.
+- Device authorization now requires consent and applicable project grants. The login client needs `session.read` for device request lookup.
+- API list endpoints enforce default and maximum limits; consumers must paginate and respect configured limits.
+- Building the backend uses Go 1.26.10. Review outbound TLS certificate compatibility and stricter URL parsing if also updating the server.
+
+See the [v4.19.2](https://github.com/zitadel/zitadel/releases/tag/v4.19.2), [v4.19.5](https://github.com/zitadel/zitadel/releases/tag/v4.19.5), and [v4.20.0](https://github.com/zitadel/zitadel/releases/tag/v4.20.0) upgrade notes. Validate the server version and database migration path separately before deploying the new Login UI against an existing instance.
 
 Keep fork-specific documentation and operational files isolated where possible. Avoid broad edits to upstream-owned docs such as `README.md` unless there is a strong reason, because those files are more likely to conflict during upstream merges.
 

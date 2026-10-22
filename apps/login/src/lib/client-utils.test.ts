@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import { isExternalUrl, isSafeRedirectUri } from "./client-utils";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { handleServerActionResponse, isExternalUrl, isSafeRedirectUri } from "./client-utils";
 
 describe("isSafeRedirectUri", () => {
   beforeEach(() => {
@@ -78,5 +78,32 @@ describe("isExternalUrl", () => {
   test("should return true for protocol-relative URLs", () => {
     expect(isExternalUrl("//evil.com")).toBe(true);
     expect(isExternalUrl("//example.com/path")).toBe(true);
+  });
+});
+
+describe("handleServerActionResponse", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  test.each([
+    "io.swiftconnect.mobile.dev.zitadel:/oauth/callback?code=abc&state=xyz",
+    "ch.zitadel.app://callback",
+    "https://idp.example.com/authorize",
+  ])("navigates directly to an external callback: %s", (redirect) => {
+    const location = { href: "https://login.example.com/ui/v2/login/loginname" };
+    vi.stubGlobal("window", { location });
+    const router = { push: vi.fn() };
+    const setError = vi.fn();
+
+    expect(handleServerActionResponse({ redirect }, router, vi.fn(), setError)).toBe(true);
+
+    expect(location.href).toBe(redirect);
+    expect(router.push).not.toHaveBeenCalled();
+    expect(setError).not.toHaveBeenCalled();
+  });
+
+  test("uses the router for an internal login step", () => {
+    const router = { push: vi.fn() };
+    expect(handleServerActionResponse({ redirect: "/password?loginName=user" }, router, vi.fn(), vi.fn())).toBe(true);
+    expect(router.push).toHaveBeenCalledWith("/password?loginName=user");
   });
 });

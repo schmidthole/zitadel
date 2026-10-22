@@ -318,8 +318,37 @@ describe("processIDPCallback", () => {
     });
   });
 
+  describe("Registration disabled", () => {
+    test.each(["isAutoCreation", "isCreationAllowed"])("blocks the new createUser action with %s", async (option) => {
+      process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION = "true";
+      mockRetrieveIDPIntent.mockResolvedValue({
+        ...defaultIntent,
+        userId: undefined,
+        addHumanUser: undefined,
+        userAction: {
+          case: "createUser",
+          value: {
+            username: "testuser",
+            userType: { case: "human", value: defaultIntent.addHumanUser },
+          },
+        },
+      });
+      mockGetIDPByID.mockResolvedValue({
+        ...defaultIdp,
+        config: { options: { ...defaultIdp.config.options, [option]: true } },
+      });
+
+      const result = await processIDPCallback(defaultParams);
+
+      expect(result.redirect).toBe("/login-error?organization=org123&requestId=req123");
+      expect(mockCreateUser).not.toHaveBeenCalled();
+      expect(mockCreateNewSessionFromIdpIntent).not.toHaveBeenCalled();
+    });
+  });
+
   describe("CASE 1: User exists and should sign in", () => {
-    test("should create session for existing user without auto-update", async () => {
+    test.each(["false", "true"])("should sign in an existing user with registration disabled=%s", async (disabled) => {
+      process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION = disabled;
       const result = await processIDPCallback(defaultParams);
 
       expect(mockRetrieveIDPIntent).toHaveBeenCalledWith({
@@ -863,7 +892,8 @@ describe("processIDPCallback", () => {
       });
     });
 
-    test("should auto-link user by username", async () => {
+    test.each(["false", "true"])("should auto-link an existing user with registration disabled=%s", async (disabled) => {
+      process.env.ZITADEL_LOGIN_DISABLE_REGISTRATION = disabled;
       mockListUsers.mockResolvedValue({
         result: [
           {
